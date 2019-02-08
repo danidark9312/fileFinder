@@ -1,40 +1,38 @@
 package com.danielgutierrez.fileFinder.business;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.BinaryOperator;
-import java.util.function.Function;
+import java.util.concurrent.Future;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
 public class ProcessingThread {
 	
 	private int nThreads;
 
-	public <T>void process(Map<String,? extends Collection<T>> actionsGroup, UnaryOperator<Collection<T>> callback) {
-		Collection<T> collection = actionsGroup.get("BLN");
+	public <T>void process(Map<String,? extends Collection<T>> actionsGroup, UnaryOperator<Collection<T>> callback) throws InterruptedException {
 		ExecutorService newFixedThreadPool = Executors.newFixedThreadPool(nThreads);
-		actionsGroup
+		List<Callable<Collection<T>>> Callables = actionsGroup
 		.entrySet()
 		.stream()
-		//.flatMap((map)->map.getValue().stream())
 		.map(Map.Entry::getValue)
-		.map(list->{
-			return new Callable<Collection<T>>() {
-				@Override
-				public Collection<T> call() throws Exception {
-					return callback.apply(list);
-				}
-			};
-		})
-		;
+		.map(list->createAction(list,callback))
+		.collect(Collectors.toList());
 		
-		
-		
-		//newFixedThreadPool.invoksubmit(()->callback.)
-		//callback.accept(files);
+		List<Future<Collection<T>>> futures = newFixedThreadPool.invokeAll(Callables);
+		for(Future<Collection<T>> future : futures) {
+			try {
+				Collection<T> resultList = future.get();
+				callback.apply(resultList);
+			} catch (ExecutionException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 	
 	private <V>Callable<Collection<V>> createAction(Collection<V> list,UnaryOperator<Collection<V>> callback){

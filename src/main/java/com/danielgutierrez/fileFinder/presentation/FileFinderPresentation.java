@@ -14,17 +14,25 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.danielgutierrez.fileFinder.business.ProcessingThread;
+
 public class FileFinderPresentation {
 	
-	public void searchFiles(String rootPath,Consumer<Map<String, List<Path>>> callback) {
+	ProcessingThread processingThread = new ProcessingThread();
+	
+	public Map<String, List<Path>> searchFiles(String rootPath,Consumer<Map<String, List<Path>>> peek) throws InterruptedException {
+		Map<String, List<Path>> sortedGroupedFiles = null;
 		try {
-			Map<String, List<Path>> sortedGroupedFiles = this.getSortedGroupedFiles(Paths.get(rootPath));
-			//Path[] array = (Path[]) Files.walk(Paths.get(rootPath)).filter(Files::isRegularFile).toArray(Path[]::new);
-			
-			callback.accept(sortedGroupedFiles);
+			sortedGroupedFiles = this.getSortedGroupedFiles(Paths.get(rootPath));
+			if(peek!=null)
+				peek.accept(sortedGroupedFiles);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		return sortedGroupedFiles;
+	}
+	public Map<String, List<Path>> searchFiles(String rootPath) throws InterruptedException {
+		return this.searchFiles(rootPath,null);
 	}
 	
 	 private Map<String, List<Path>> getSortedGroupedFiles(Path rootPath) throws IOException {
