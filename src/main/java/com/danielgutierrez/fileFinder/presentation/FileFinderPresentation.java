@@ -9,8 +9,10 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class FileFinderPresentation {
 	
@@ -57,5 +59,9 @@ public class FileFinderPresentation {
 			}
 		}
 		return true;
+	}
+	public static void main(String[] args) {
+		String sentence = "Life is a box of chocolates, Forrest. You never know what you're gonna get."; //1 
+		System.out.println(Stream.of(sentence.split("[ ,.]")).anyMatch(w->w.startsWith("g"))); //3
 	}
 }
