@@ -8,6 +8,8 @@ import java.util.stream.IntStream;
 import javax.swing.SwingUtilities;
 import javax.swing.text.JTextComponent;
 
+import com.danielgutierrez.fileFinder.view.MainFrame;
+
 public class Logger {
 	
 	private JTextComponent outPutComponent;
@@ -19,7 +21,12 @@ public class Logger {
 		this.logRecords = new FixedQueue<>(maxSizeOfRecordList);
 	}
 	public void tryToWriteLog(String... text) {
-		logRecords.addAll(Arrays.asList(text));
+		if(MainFrame.fullDebug)
+			System.out.println(Arrays.stream(text).reduce((a,b)->a.concat(b).concat("\n")));
+		new Thread(()->logRecords.addAll(Arrays.asList(text))).start();
+	}
+	public void tryToWriteLogf(String text,Object... param) {
+		this.tryToWriteLog(String.format(text, param));
 	}
 	
 	private class FixedQueue<E> extends LinkedList<E>{
@@ -36,7 +43,10 @@ public class Logger {
 			return this.addAll(Arrays.asList(e));
 		}
 		
-		public boolean addAll(List<E> list) {
+		
+		public synchronized boolean addAll(List<E> list) {
+			if(list.size()>this.maxSize)
+				list = list.subList(list.size()-this.maxSize, list.size());
 			while(this.size()+list.size()>this.maxSize)
 				freeSpace();
 			boolean recordsAdded= super.addAll(list);
