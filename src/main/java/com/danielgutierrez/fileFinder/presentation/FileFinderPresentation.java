@@ -6,11 +6,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+<<<<<<< HEAD
+=======
+import java.util.function.BiConsumer;
+>>>>>>> c1b41d79392eb2b1da2a146cf1b427e786047018
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -52,21 +59,18 @@ public class FileFinderPresentation {
  	return fileName.substring(fileName.lastIndexOf('.') + 1);
  }
 	
-
-	private static boolean areSimilarFiles(Path file1, Path file2) throws IOException {
-		final byte buffer1[] = new byte[1024];
-		final byte buffer2[] = new byte[1024];
-		final int kilobytesThreshold = 100; // Amount of kilobytes to be compared
-		int cont = 0;
-		try (FileInputStream br1 = new FileInputStream(file1.toFile());
-				FileInputStream br2 = new FileInputStream(file2.toFile())) {
-			while (br1.read(buffer1) != -1 && br2.read(buffer2) != -1 && cont++ < kilobytesThreshold) {
-				if (!Arrays.equals(buffer1, buffer2)) {
-					return false;
-				}
+	
+	public void findDuplicatedFiles(Map<String, List<Path>> listFilesGroupByExt,
+			Consumer<Collection<Collection<Path>>> callback) throws InterruptedException {
+		Function<Collection<Path>,Collection<Collection<Path>>> compareProcess = t -> {
+			try {
+				return this.processingThread.getSimilarFiles(t);
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-		}
-		return true;
+			return null;
+		};
+		this.processingThread.process(listFilesGroupByExt, compareProcess, callback);
 	}
 	public static void main(String[] args) {
 		String sentence = "Life is a box of chocolates, Forrest. You never know what you're gonna get."; //1 
