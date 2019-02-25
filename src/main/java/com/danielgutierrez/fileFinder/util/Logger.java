@@ -1,8 +1,10 @@
 package com.danielgutierrez.fileFinder.util;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import javax.swing.SwingUtilities;
@@ -22,8 +24,16 @@ public class Logger {
 	}
 	public void tryToWriteLog(String... text) {
 		if(MainFrame.fullDebug)
-			System.out.println(Arrays.stream(text).reduce((a,b)->a.concat(b).concat("\n")));
-		new Thread(()->logRecords.addAll(Arrays.asList(text))).start();
+			System.out.println(Arrays.stream(text).reduce((a,b)->a.concat(b).concat("\n")).get());
+		
+		List<String> lines = Arrays
+		.asList(text)
+		.stream()
+		.map(line->line.split("\n"))
+		.flatMap(Arrays::stream)
+		.collect(Collectors.toList());
+		
+		new Thread(()->logRecords.addAll(lines)).start();
 	}
 	public void tryToWriteLogf(String text,Object... param) {
 		this.tryToWriteLog(String.format(text, param));
@@ -60,8 +70,11 @@ public class Logger {
 				.map(Object::toString)
 				.reduce((a,b)->a+"\n"+b)
 				.get();
-			
-			SwingUtilities.invokeLater(()->outPutComponent.setText(textToWrite));
+			try {
+				SwingUtilities.invokeAndWait(()->outPutComponent.setText(textToWrite));
+			} catch (InvocationTargetException|InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 
 		/**

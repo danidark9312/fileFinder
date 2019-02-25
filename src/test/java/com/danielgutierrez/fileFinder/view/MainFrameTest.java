@@ -1,6 +1,5 @@
 package com.danielgutierrez.fileFinder.view;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.file.Path;
@@ -9,8 +8,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
+
+import com.danielgutierrez.fileFinder.model.FileSizeCached;
 
 public class MainFrameTest {
 	
@@ -18,7 +20,7 @@ public class MainFrameTest {
 	    public void testFindDuplicatedFiles() {
 	 		MainFrame mainFrame = new MainFrame();
 	 		try {
-				mainFrame.findDuplicatedFiles(getListPath());
+				mainFrame.findDuplicatedFiles(getListPath2());
 				assertTrue(true);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -41,4 +43,20 @@ public class MainFrameTest {
 			
 			return result;
 		}
+		private Map<String, List<FileSizeCached>> getListPath2() {
+			Map<String, List<FileSizeCached>> result = new HashMap<>();
+			result.put("swf", Arrays
+					.asList(
+							Paths.get("C:\\Users\\daniel\\Desktop\\Conciliacion Brian\\fotos apartamento\\IMG_4417.jpg"),
+							Paths.get("C:\\Users\\daniel\\Desktop\\Conciliacion Brian\\fotos apartamento\\IMG_4418.jpg"),
+							Paths.get("C:\\Users\\daniel\\Desktop\\Conciliacion Brian\\fotos apartamento\\IMG_4419.jpg"),
+							Paths.get("C:\\Users\\daniel\\Desktop\\Conciliacion Brian\\fotos apartamento\\IMG_4417c.jpg")
+							).stream().map(FileSizeCached::new).collect(Collectors.toList())
+					);
+			
+			
+			return result;
+		}
+		
+		
 }
