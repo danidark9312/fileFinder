@@ -10,7 +10,10 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
@@ -60,7 +63,8 @@ public class MainFrame implements LogWritter{
 	public static final int threadsToUse = 8;
 	public static final double mgBytesDifferenceToFindCandidates = 4;
 	public static final boolean fullDebug = Boolean.FALSE;
-	private static final String DEFAULTDIR = /*System.getProperty("user.home");*/"C:\\Users\\daniel\\Desktop";
+	//private static final String DEFAULTDIR = /*System.getProperty("user.home");*/"C:\\Users\\daniel\\Desktop";
+	private static final String DEFAULTDIR = /*System.getProperty("user.home");*/"C:\\Users\\daniel.gutierrez\\Desktop";
 	private AtomicLong numberFilesFound = new AtomicLong(0);
 	private AtomicLong numberFilesProcessed = new AtomicLong(0);
 	
@@ -369,13 +373,19 @@ public class MainFrame implements LogWritter{
 	}
 
 	private void searchFilesEvent(String rootPath) {
+		if(!Files.exists(Paths.get(rootPath))){
+			this.writeLogsf("Path not found %s",rootPath);
+			return;
+		}
 		writeLogs("Initializing searching action");
+		showLogTab();
 		final Instant beforeStart = Instant.now();
 			new FilesSearcherWorker(this, new Function<String, Map<String,List<FileSizeCached>>>() {
 				@Override
 				public Map<String, List<FileSizeCached>> apply(String t) {
+					Map<String, List<FileSizeCached>> searchFiles = null;
 					try {
-						Map<String, List<FileSizeCached>> searchFiles = MainFrame.this.fileFinderPresentation.searchFiles(t, getFilter());
+						searchFiles = MainFrame.this.fileFinderPresentation.searchFiles(t, getFilter());
 						MainFrame.this.numberFilesFound.set(searchFiles
 								.entrySet()
 								.stream()
@@ -383,14 +393,12 @@ public class MainFrame implements LogWritter{
 								.count());
 						MainFrame.this.updateTotalFilesLabel();
 						MainFrame.this.writeLogsf("%d files were found",MainFrame.this.numberFilesFound.get());
-						MainFrame.this.writeLogsf("Process performed in %d seconds",ChronoUnit.SECONDS.between(beforeStart, Instant.now()));
-						return searchFiles;
+						MainFrame.this.writeLogsf("Process performed in %f seconds",(ChronoUnit.MILLIS.between(beforeStart, Instant.now()))/1000.0);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 						MainFrame.this.writeLogs(e.getMessage());
 					}
-					//TODO Fix this error handling
-					return null;
+					return searchFiles;
 				}
 			}, rootPath).execute();
 		
@@ -404,6 +412,7 @@ public class MainFrame implements LogWritter{
 	protected void findDuplicatedFiles(Map<String, List<FileSizeCached>> listFilesGroupByExt)throws InterruptedException {
 		getResultTable().clearData();
 		getBtnStopOperation().setVisible(Boolean.TRUE);
+		showLogTab();
 		this.numberFilesProcessed.set(0);
 		fileWorker = new FindFilesWorker(()->{
 			try {
@@ -424,6 +433,7 @@ public class MainFrame implements LogWritter{
 						
 					}
 					getBtnStopOperation().setVisible(Boolean.FALSE);
+					showResultTab();
 				}, this.fileWorker);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -499,7 +509,14 @@ public class MainFrame implements LogWritter{
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			} catch (ExecutionException e) {
-				e.printStackTrace();
+				if(e.getCause() !=null 
+						&& e.getCause().getCause()!=null 
+						&& e.getCause().getCause() instanceof AccessDeniedException) {
+					this.mainFrame.writeLogs("Could not write due permission","AccessDeniedException "+e.getCause().getCause().getMessage());
+					e.getCause().getCause().printStackTrace();
+				}else {
+					e.printStackTrace();
+				}
 			}
 			super.done();
 		}

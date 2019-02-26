@@ -1,6 +1,7 @@
 package com.danielgutierrez.fileFinder.presentation;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -41,6 +42,8 @@ public class FileFinderPresentation {
 			sortedGroupedFiles = this.getSortedGroupedFiles(Paths.get(rootPath), filter);
 			if(peek!=null)
 				peek.accept(sortedGroupedFiles);
+		}catch(AccessDeniedException e) {
+			this.mainFrame.writeLogs("Could no read the directory, need permission",e.getMessage());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

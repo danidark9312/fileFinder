@@ -84,21 +84,19 @@ public class ProcessingThread {
 		FileSizeCached temp1 = null;
 		FileSizeCached temp2 = null;
 		while((temp1 = stack.poll())!=null && !worker.isCancelled()) {
+			int indexOfCandidate = 0;
 			List<FileSizeCached> repeatedList = new ArrayList<>();
+			Queue<FileSizeCached> possibleMatchs = new LinkedList<>();
+			
 			repeatedList.add(temp1);
 			similarFilesSet.add(repeatedList);
-			//int con = 0;
-			
-			int indexOfCandidate = 0;
-			Queue<FileSizeCached> possibleMatchs = new LinkedList<>();
 			while((indexOfCandidate = Collections.binarySearch(stack, temp1))>=0) {
 				temp2 = stack.get(indexOfCandidate);
 				stack.remove(temp2);
-				if(/*areCandidates(temp1,temp2) && */areSimilarFiles(temp1.getFile(), temp2.getFile())) {
+				if(areSimilarFiles(temp1.getFile(), temp2.getFile())) 
 					repeatedList.add(temp2);
-				}else {
+				else
 					possibleMatchs.add(temp2);
-				}
 			}
 			if(possibleMatchs.size()>0) {
 				stack.addAll(possibleMatchs);
@@ -106,14 +104,10 @@ public class ProcessingThread {
 			}
 
 			/*remove single record list*/
-			if (repeatedList.size() == 1) {
-				System.out.println("No repeated files for["+repeatedList.get(0).toString()+"]");
-				if (MainFrame.fullDebug)
-					this.mainFrame.writeLogs("No repeated files for["+repeatedList.get(0).toString()+"]");
+			if (repeatedList.size() == 1) 
 				similarFilesSet.remove(repeatedList);
-			}else {
+			else 
 				System.out.println("Repeated files for["+repeatedList.get(0).toString()+"]");
-			}
 			updateUIProcessFiles(repeatedList.size());
 		}
 		
