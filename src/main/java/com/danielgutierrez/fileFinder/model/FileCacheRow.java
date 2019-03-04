@@ -1,8 +1,11 @@
 package com.danielgutierrez.fileFinder.model;
 
 import java.awt.Color;
+import java.io.Serializable;
 
-public class FileCacheRow {
+public class FileCacheRow implements Serializable{
+	private static final long serialVersionUID = 1L;
+	
 	private FileSizeCached fileSizeCached;
 	private boolean isSelected = Boolean.FALSE;
 	private Color color;

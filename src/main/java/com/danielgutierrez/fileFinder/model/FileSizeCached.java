@@ -1,12 +1,15 @@
 package com.danielgutierrez.fileFinder.model;
 
+
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.DecimalFormat;
+import java.nio.file.Paths;
 
-public class FileSizeCached implements Comparable<FileSizeCached>{
-	private Path file;
+public class FileSizeCached implements Comparable<FileSizeCached>,Serializable{
+	private static final long serialVersionUID = 1L;
+	transient private Path file;
 	private long size;
 
 	public FileSizeCached(Path file) {
@@ -78,9 +81,17 @@ public class FileSizeCached implements Comparable<FileSizeCached>{
 		return (int) (this.getSize()-o.getSize());
 	}
 
+	private void writeObject(java.io.ObjectOutputStream out)
+			  throws IOException{
+				out.defaultWriteObject();
+			    out.writeUTF(getFile().toString());
+			  }
 	
-
-	
+	 private void readObject(java.io.ObjectInputStream stream)
+	            throws IOException, ClassNotFoundException {
+	        stream.defaultReadObject();
+	        this.file = Paths.get(stream.readUTF());
+	    }
 	
 
 }

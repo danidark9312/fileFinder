@@ -2,6 +2,7 @@ package com.danielgutierrez.fileFinder.view;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Event;
 import java.awt.EventQueue;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
@@ -9,7 +10,12 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -34,6 +41,7 @@ import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
@@ -46,10 +54,12 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
+import javax.swing.filechooser.FileFilter;
 
 import com.danielgutierrez.fileFinder.model.FileCacheModel;
 import com.danielgutierrez.fileFinder.model.FileCacheRow;
 import com.danielgutierrez.fileFinder.model.FileSizeCached;
+import com.danielgutierrez.fileFinder.model.Filter;
 import com.danielgutierrez.fileFinder.model.ResultsTable;
 import com.danielgutierrez.fileFinder.presentation.FileFinderPresentation;
 import com.danielgutierrez.fileFinder.util.Logger;
@@ -63,10 +73,11 @@ public class MainFrame implements LogWritter{
 	public static final int threadsToUse = 8;
 	public static final double mgBytesDifferenceToFindCandidates = 4;
 	public static final boolean fullDebug = Boolean.FALSE;
-	//private static final String DEFAULTDIR = /*System.getProperty("user.home");*/"C:\\Users\\daniel\\Desktop";
-	private static final String DEFAULTDIR = /*System.getProperty("user.home");*/"C:\\Users\\daniel.gutierrez\\Desktop";
+	private static final String DEFAULTDIR = /*System.getProperty("user.home");*/"C:\\Users\\daniel\\Desktop";
+//	private static final String DEFAULTDIR = /*System.getProperty("user.home");*/"C:\\Users\\daniel.gutierrez\\Desktop";
 	private AtomicLong numberFilesFound = new AtomicLong(0);
 	private AtomicLong numberFilesProcessed = new AtomicLong(0);
+	private Filter filter = Filter.NONE;
 	
 	private JFrame frame;	
 	private JTextField textFieldRootPath;
@@ -93,6 +104,11 @@ public class MainFrame implements LogWritter{
 	private JLabel lblRemainingFiles;
 	private FindFilesWorker fileWorker;
 	private JButton btnStopOperation;
+	private JButton button;
+	private JRadioButtonMenuItem jRadioFilterNoFilter;
+	private JRadioButtonMenuItem jRadioFilterVideo;
+	private JRadioButtonMenuItem jRadioFilterImage;
+	private JRadioButtonMenuItem jRadioFilterMusic;
 	
 	public synchronized Map<String, List<FileSizeCached>> getListFilesGroupByExt() {
 		return listFilesGroupByExt;
@@ -166,6 +182,16 @@ public class MainFrame implements LogWritter{
 		btnSearchAction.addActionListener((event)->{
 			this.searchFilesEvent(textFieldRootPath.getText());
 		});
+		
+		button = new JButton("");
+		button.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				MainFrame.this.importData();
+			}
+		});
+		button.setToolTipText("Import Process");
+		button.setIcon(new ImageIcon(MainFrame.class.getResource("/javax/swing/plaf/metal/icons/ocean/minimize-pressed.gif")));
+		fileSearchPanel.add(button);
 		
 		
 		fileSearchPanel.add(btnOpenFileManager);
@@ -310,6 +336,7 @@ public class MainFrame implements LogWritter{
 	private JMenuBar buildMenu() {
 		JMenuBar menuBar = new JMenuBar();
 		JMenu jMenu = new JMenu("Menu");
+		JMenu jMenuFilter = new JMenu("Filter");
 		menuBar.add(jMenu);
 		JMenuItem optionClearSelection = new JMenuItem("Clear Selection");
 		optionClearSelection.addActionListener(e->getResultTable().getModel().clearSelection());
@@ -321,17 +348,35 @@ public class MainFrame implements LogWritter{
 		optionDelete.addActionListener(e->this.deleteSelectedRows());
 		
 		ButtonGroup group = new ButtonGroup();
-		//JRadioButtonMenuItem jRadioNoOrder = new JRadioButtonMenuItem("No Order");
 		JRadioButtonMenuItem jRadioSortBySize = new JRadioButtonMenuItem("Sort by Size");
-		
-		jRadioSortBySize.addActionListener(e->sortBySize());
-		
 		jRadioSortBySize.setSelected(true);
-		//group.add(jRadioNoOrder);
 		group.add(jRadioSortBySize);
 		
+		ButtonGroup filterGroup = new ButtonGroup();
+		ActionListener c = (e)->filterButtonEvent(e);
+		
+		jRadioFilterNoFilter = new JRadioButtonMenuItem("No Filter");
+		jRadioFilterVideo = new JRadioButtonMenuItem("Videos");
+		jRadioFilterImage = new JRadioButtonMenuItem("Images");
+		jRadioFilterMusic = new JRadioButtonMenuItem("Music");
+		jRadioFilterNoFilter.setSelected(Boolean.TRUE);
+		jRadioFilterNoFilter.addActionListener(c);
+		jRadioFilterVideo.addActionListener(c);
+		jRadioFilterImage.addActionListener(c);
+		jRadioFilterMusic.addActionListener(c);
+		filterGroup.add(jRadioFilterNoFilter);
+		filterGroup.add(jRadioFilterVideo);
+		filterGroup.add(jRadioFilterImage);
+		filterGroup.add(jRadioFilterMusic);
+		jRadioSortBySize.addActionListener(e->sortBySize());
+		
+		jMenuFilter.add(jRadioFilterNoFilter);
+		jMenuFilter.add(jRadioFilterVideo);
+		jMenuFilter.add(jRadioFilterImage);
+		jMenuFilter.add(jRadioFilterMusic);
 		
 		JMenuItem optionExport = new JMenuItem("Export");
+		optionExport.addActionListener(e->exportData());
 		JMenuItem optionImport = new JMenuItem("Import");
 		
 		
@@ -339,8 +384,9 @@ public class MainFrame implements LogWritter{
 		jMenu.add(optionSmartSelection);
 		jMenu.add(optionDelete);
 		jMenu.addSeparator();
-		//jMenu.add(jRadioNoOrder);
 		jMenu.add(jRadioSortBySize);
+		jMenu.addSeparator();
+		jMenu.add(jMenuFilter);
 		jMenu.addSeparator();
 		jMenu.add(optionImport);
 		jMenu.add(optionExport);
@@ -348,10 +394,108 @@ public class MainFrame implements LogWritter{
 		return menuBar;
 	}
 
-	protected void deleteSelectedRows() {
-		ResultsTable rt = getResultTable();
-		rt.getModel().deleteSelected();
+	private void filterButtonEvent(ActionEvent e) {
+		Object source = e.getSource();
+		if(source == this.jRadioFilterNoFilter)
+			disabledFilter();
+		else if(source == this.jRadioFilterImage)
+			filterByImage();
+		else if(source == this.jRadioFilterMusic)
+			filterByMusic();
+		else if(source == this.jRadioFilterVideo)
+			filterByVideo();
+			
+	}
+
+	private void filterByVideo() {
+		this.filter = Filter.VIDEO;
+	}
+
+	private void filterByMusic() {
+		this.filter = Filter.MUSIC;		
+	}
+
+	private void filterByImage() {
+		this.filter = Filter.IMAGE;		
+	}
+
+	private void disabledFilter() {
+		this.filter = Filter.NONE;
+	}
+
+	private void exportData() {
+		JFileChooser jFileChooser = new JFileChooser(DEFAULTDIR);
+		jFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+		File file = null;
+		int returnVal  = jFileChooser.showSaveDialog(frame);
+		 if (returnVal == JFileChooser.APPROVE_OPTION) {
+	            file = jFileChooser.getSelectedFile();
+	            writeLogs("Exporting command: " + file.getName());
+	        } else {
+	        	writeLogs("Open command cancelled by user.");
+	        }
 		
+		FileCacheModel model = getResultTable().getModel();
+		try (ObjectOutputStream ous = new ObjectOutputStream(new FileOutputStream(file+".dat"))){
+			ous.writeObject(model.getFileCacheList());
+			JOptionPane.showMessageDialog(frame, "File save successfully");
+			writeLogs("File saved successfully");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		};
+	}
+	private void importData() {
+		JFileChooser jFileChooser = new JFileChooser(DEFAULTDIR);
+		jFileChooser.addChoosableFileFilter(new FileFilter() {
+			@Override
+			public String getDescription() {
+				return "Data File (.dat)";
+			}
+			@Override
+			public boolean accept(File f) {
+				 if (f.isDirectory()) {
+			            return true;
+			        } else {
+			        	return f.getName().toLowerCase().endsWith(".dat");
+			        }
+			}
+		});
+		
+		File file = null;
+		int returnVal  = jFileChooser.showOpenDialog(frame);
+		if (returnVal == JFileChooser.APPROVE_OPTION) {
+			file = jFileChooser.getSelectedFile();
+			
+			FileCacheModel model = getResultTable().getModel();
+			try (ObjectInputStream ius = new ObjectInputStream(new FileInputStream(file))){
+				List<List<FileCacheRow>> files = (List<List<FileCacheRow>>) ius.readObject();
+				
+				resultTable.getModel().setFileCacheList(files);
+				writeLogs("File loaded sucessfully");
+				btnProcessRepeatFiles.setEnabled(Boolean.TRUE);
+				MainFrame.this.getTglbtnToggleTablelogs().setEnabled(Boolean.TRUE);
+				showResultTab();	
+			} catch (IOException|ClassNotFoundException e) {
+				e.printStackTrace();
+			}
+			
+			writeLogs("Importing command: " + file.getName());
+		} else {
+			writeLogs("Open command cancelled by user.");
+		}
+		
+		
+	}
+
+	protected void deleteSelectedRows() {
+		int showConfirmDialog = JOptionPane.showConfirmDialog(frame, "Are you sure you want to delete these files, operation can not be undone");
+		if(showConfirmDialog == 0) {
+			ResultsTable rt = getResultTable();
+			rt.getModel().deleteSelected();
+			JOptionPane.showMessageDialog(frame, "The files have been deleted");
+		}
 	}
 
 	private void sortBySize() {
@@ -406,7 +550,7 @@ public class MainFrame implements LogWritter{
 	}
 	
 	protected String getFilter() {
-		return /*"AVI|WMV|FLV|3GP|MPG|MP4|VOB"*/null;
+		return filter.getRegex();
 	}
 
 	protected void findDuplicatedFiles(Map<String, List<FileSizeCached>> listFilesGroupByExt)throws InterruptedException {
@@ -547,20 +691,21 @@ public class MainFrame implements LogWritter{
 		}else {
 			showLogTab();
 		}
-		getCenterPanel().revalidate();
-		getCenterPanel().repaint();
-
 	}
 	
 	private void showLogTab() {
 		getCenterPanel().remove(getPanelResult());
 		getCenterPanel().add(getScrollLog(),BorderLayout.CENTER);
+		getCenterPanel().revalidate();
+		getCenterPanel().repaint();
 		this.logsIsShown = true;
 	}
 
 	private void showResultTab() {
 		getCenterPanel().remove(getScrollLog());
 		getCenterPanel().add(getPanelResult(),BorderLayout.CENTER);
+		getCenterPanel().revalidate();
+		getCenterPanel().repaint();
 		this.logsIsShown = false;
 	}
 

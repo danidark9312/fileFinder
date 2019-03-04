@@ -84,5 +84,7 @@ public class Logger {
 			IntStream.range(0, 10).forEach((i->this.remove()));
 		}
 	}
+	
+	
 
 }

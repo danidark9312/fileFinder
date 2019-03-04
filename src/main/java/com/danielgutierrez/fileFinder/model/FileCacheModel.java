@@ -8,12 +8,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.swing.table.AbstractTableModel;
 
 public class FileCacheModel extends AbstractTableModel {
-	
+	private static final long serialVersionUID = 1L;
 	private String[] columnNames = {"Path","Size(MB)","Select"};
 	private List<List<FileCacheRow>> fileCacheList;
 
@@ -66,6 +65,17 @@ public class FileCacheModel extends AbstractTableModel {
 		if(this.fileCacheList == null)
 			this.fileCacheList = new ArrayList<>();
 		this.fileCacheList.add(group);
+	}
+	
+	
+
+	public List<List<FileCacheRow>> getFileCacheList() {
+		return fileCacheList;
+	}
+
+	public void setFileCacheList(List<List<FileCacheRow>> fileCacheList) {
+		this.fileCacheList = fileCacheList;
+		fireTableDataChanged();
 	}
 
 	// needed to show column names in JTable
